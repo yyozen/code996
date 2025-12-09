@@ -191,10 +191,18 @@ function printHealthAssessment(analysis: TeamAnalysis): void {
 
 /**
  * 格式化时间（小时 → HH:MM）
+ * 注意：处理分钟四舍五入到60的进位情况
  */
 function formatTime(hours: number): string {
-  const h = Math.floor(hours)
-  const m = Math.round((hours - h) * 60)
+  let h = Math.floor(hours)
+  let m = Math.round((hours - h) * 60)
+
+  // 处理分钟进位到60的情况
+  if (m >= 60) {
+    m = 0
+    h += 1
+  }
+
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
 }
 
