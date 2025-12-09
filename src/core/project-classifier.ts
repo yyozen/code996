@@ -65,15 +65,14 @@ export class ProjectClassifier {
     // 维度3: 月光族模式
     const moonlightingResult = this.detectMoonlightingPattern(rawData.byHour, rawData.byDay, rawData.dayHourCommits)
 
-    // 维度4: 贡献者数量（强特征，可单独判定）
+    // 贡献者数量（仅用于记录，不参与判断）
     const contributorsCount = rawData.contributors || 0
 
-    // 综合判断
+    // 综合判断（不再使用贡献者数量作为判断依据）
     const { projectType, confidence, reasoning } = this.makeDecision(
       regularityResult,
       weekendResult,
-      moonlightingResult,
-      contributorsCount
+      moonlightingResult
     )
 
     return {
@@ -383,12 +382,12 @@ export class ProjectClassifier {
 
   /**
    * 综合决策
+   * 注意：贡献者数量不再作为判断依据，因为大公司项目也可能有很多贡献者
    */
   private static makeDecision(
     regularity: ProjectClassificationResult['dimensions']['workTimeRegularity'],
     weekend: ProjectClassificationResult['dimensions']['weekendActivity'],
-    moonlighting: ProjectClassificationResult['dimensions']['moonlightingPattern'],
-    contributorsCount: number
+    moonlighting: ProjectClassificationResult['dimensions']['moonlightingPattern']
   ): {
     projectType: ProjectType
     confidence: number
@@ -398,16 +397,7 @@ export class ProjectClassifier {
 
     // ========== 强特征判断（单独满足即可判定为开源项目）==========
 
-    // 强特征1: 贡献者数量众多（>=50 人）
-    if (contributorsCount >= 50) {
-      return {
-        projectType: ProjectType.OPEN_SOURCE,
-        confidence: Math.min(95, 70 + Math.floor(contributorsCount / 10)),
-        reasoning: `贡献者数量众多 (${contributorsCount} 人)，典型的开源项目特征`,
-      }
-    }
-
-    // 强特征2: 工作时间规律性极低（<= 25 分）
+    // 强特征: 工作时间规律性极低（<= 25 分）
     if (regularity.score <= 25) {
       return {
         projectType: ProjectType.OPEN_SOURCE,
@@ -430,15 +420,6 @@ export class ProjectClassifier {
     } else if (regularity.score < 75) {
       ossScore += 20
       reasons.push(`工作时间规律性中等 (${regularity.score}/100)`)
-    }
-
-    // 贡献者数量（20-49人给予适度加分）
-    if (contributorsCount >= 20 && contributorsCount < 50) {
-      ossScore += 20
-      reasons.push(`贡献者较多 (${contributorsCount} 人)`)
-    } else if (contributorsCount >= 10 && contributorsCount < 20) {
-      ossScore += 10
-      reasons.push(`贡献者数量中等 (${contributorsCount} 人)`)
     }
 
     // 周末活跃度分析
